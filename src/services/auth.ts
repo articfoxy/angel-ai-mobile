@@ -80,6 +80,30 @@ export async function register(
   return data.user;
 }
 
+export async function loginWithApple(
+  identityToken: string,
+  fullName?: { givenName?: string | null; familyName?: string | null } | null
+): Promise<User> {
+  const response = await fetch(`${API_URL}/api/auth/apple`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identityToken, fullName }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Apple sign-in failed' }));
+    throw new Error(error.error || error.message || 'Apple sign-in failed');
+  }
+
+  const json = await response.json();
+  const data: AuthResponse = json.data ?? json;
+  await storeToken(data.accessToken);
+  if (data.refreshToken) {
+    await storeRefreshToken(data.refreshToken);
+  }
+  return data.user;
+}
+
 export async function logout(): Promise<void> {
   await clearTokens();
 }

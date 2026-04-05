@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,17 +11,23 @@ import {
   Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { colors, spacing, fontSize } from '../theme';
 import { useAuth } from '../hooks/useAuth';
 
 export function LoginScreen() {
-  const { login, register } = useAuth();
+  const { login, register, loginWithApple } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+
+  useEffect(() => {
+    AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
+  }, []);
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
@@ -51,6 +57,35 @@ export function LoginScreen() {
     }
   };
 
+  const handleAppleLogin = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        throw new Error('No identity token received from Apple');
+      }
+
+      await loginWithApple(credential.identityToken, credential.fullName);
+    } catch (err: any) {
+      if (err.code === 'ERR_REQUEST_CANCELED') {
+        return;
+      }
+      const message = err instanceof Error ? err.message : 'Apple sign-in failed';
+      setError(message);
+      Alert.alert('Error', message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -69,6 +104,27 @@ export function LoginScreen() {
         </View>
 
         <View style={styles.form}>
+          {/* Apple Sign In */}
+          {appleAuthAvailable && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+              cornerRadius={12}
+              style={styles.appleButton}
+              onPress={handleAppleLogin}
+            />
+          )}
+
+          {/* Divider */}
+          {appleAuthAvailable && (
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+          )}
+
+          {/* Email/Password Form */}
           {isRegister && (
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Name</Text>
@@ -187,6 +243,25 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: spacing.md,
+  },
+  appleButton: {
+    height: 52,
+    width: '100%',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    color: colors.textTertiary,
+    fontSize: fontSize.sm,
+    fontWeight: '500',
   },
   inputContainer: {
     gap: spacing.xs,

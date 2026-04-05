@@ -3,6 +3,7 @@ import type { User } from '../types';
 import {
   login as authLogin,
   register as authRegister,
+  loginWithApple as authLoginWithApple,
   logout as authLogout,
   getStoredToken,
 } from '../services/auth';
@@ -15,6 +16,10 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
+  loginWithApple: (
+    identityToken: string,
+    fullName?: { givenName?: string | null; familyName?: string | null } | null
+  ) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -53,6 +58,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userData);
   }, []);
 
+  const loginWithApple = useCallback(
+    async (
+      identityToken: string,
+      fullName?: { givenName?: string | null; familyName?: string | null } | null
+    ) => {
+      const userData = await authLoginWithApple(identityToken, fullName);
+      setUser(userData);
+    },
+    []
+  );
+
   const logout = useCallback(async () => {
     // Disconnect socket before clearing tokens to ensure clean shutdown
     disconnectSocket();
@@ -67,9 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: !!user,
       login,
       register,
+      loginWithApple,
       logout,
     }),
-    [user, isLoading, login, register, logout]
+    [user, isLoading, login, register, loginWithApple, logout]
   );
 
   return React.createElement(AuthContext.Provider, { value }, children);
