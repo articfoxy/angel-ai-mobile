@@ -70,10 +70,12 @@ export function useSession(socket: Socket | null): UseSessionReturn {
       });
     };
 
-    // Backend emits: whisper:card — full WhisperCard Prisma object
-    const onWhisperCard = (data: WhisperCardData) => {
+    // Backend emits: whisper:card — either full WhisperCard Prisma object (inference path)
+    // or { sessionId, card } (legacy mock path). Handle both.
+    const onWhisperCard = (data: WhisperCardData | { sessionId: string; card: WhisperCardData }) => {
       setIsThinking(false);
-      setWhisperCards((prev) => [...prev, { ...data, id: data.id || `whisper-${Date.now()}` }]);
+      const card: WhisperCardData = 'card' in data && data.card ? data.card : data as WhisperCardData;
+      setWhisperCards((prev) => [...prev, { ...card, id: card.id || `whisper-${Date.now()}` }]);
     };
 
     // Backend emits: inference:thinking {} — empty object, just a signal
@@ -173,7 +175,7 @@ export function useSession(socket: Socket | null): UseSessionReturn {
     segmentCounterRef.current = 0;
     sessionIdRef.current = null;
 
-    socket.emit('session:start-live', { modeId: selectedMode.id });
+    socket.emit('session:start-live', { modeId: selectedMode.modeId });
     setPhase('live');
 
     // Start audio streaming

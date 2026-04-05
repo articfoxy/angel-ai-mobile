@@ -28,13 +28,13 @@ type TabParamList = {
 };
 
 const DEFAULT_MODES: Mode[] = [
-  { id: 'meeting', name: 'Meeting', description: 'Meeting intelligence', icon: 'people', slug: 'meeting' },
-  { id: 'translator', name: 'Translator', description: 'Real-time translation', icon: 'language', slug: 'translator' },
-  { id: 'think', name: 'Think', description: 'Thought partner', icon: 'bulb', slug: 'think' },
-  { id: 'sales', name: 'Sales', description: 'Sales coaching', icon: 'trending-up', slug: 'sales' },
-  { id: 'learning', name: 'Learning', description: 'Learning assistant', icon: 'school', slug: 'learning' },
-  { id: 'coach', name: 'Coach', description: 'Personal coach', icon: 'fitness', slug: 'coach' },
-  { id: 'builder', name: 'Builder', description: 'Build ideas', icon: 'construct', slug: 'builder' },
+  { modeId: 'meeting', name: 'Meeting', icon: 'people' },
+  { modeId: 'translator', name: 'Translator', icon: 'language' },
+  { modeId: 'think', name: 'Think', icon: 'bulb' },
+  { modeId: 'sales', name: 'Sales', icon: 'trending-up' },
+  { modeId: 'learning', name: 'Learning', icon: 'school' },
+  { modeId: 'coach', name: 'Coach', icon: 'fitness' },
+  { modeId: 'builder', name: 'Builder', icon: 'construct' },
 ];
 
 export function DashboardScreen() {
@@ -89,7 +89,7 @@ export function DashboardScreen() {
   };
 
   const handleModePress = (mode: Mode) => {
-    navigation.navigate('Session', { modeId: mode.id });
+    navigation.navigate('Session', { modeId: mode.modeId });
   };
 
   const formatDuration = (session: Session) => {
@@ -164,7 +164,7 @@ export function DashboardScreen() {
             >
               {displayModes.map((mode) => (
                 <TouchableOpacity
-                  key={mode.id}
+                  key={mode.modeId}
                   onPress={() => handleModePress(mode)}
                   activeOpacity={0.7}
                 >

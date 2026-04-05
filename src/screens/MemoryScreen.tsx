@@ -45,14 +45,16 @@ export function MemoryScreen() {
 
   const fetchMemories = useCallback(async () => {
     try {
-      let data: Memory[];
       if (searchQuery.trim()) {
-        data = await api.get<Memory[]>(`memories/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        // Search endpoint returns a flat array
+        const data = await api.get<Memory[]>(`memories/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        setMemories(Array.isArray(data) ? data : []);
       } else {
+        // List endpoint returns { memories, total }
         const params = filter === 'all' ? '?limit=50' : `?type=${filter}&limit=50`;
-        data = await api.get<Memory[]>(`memories${params}`);
+        const data = await api.get<{ memories: Memory[]; total: number }>(`memories${params}`);
+        setMemories(Array.isArray(data.memories) ? data.memories : []);
       }
-      setMemories(Array.isArray(data) ? data : []);
     } catch {
       setMemories([]);
     }
@@ -208,7 +210,13 @@ export function MemoryScreen() {
       {/* Memory Stats */}
       {stats && !searchQuery && (
         <View style={styles.statsRow}>
-          {Object.entries(stats.byType || {}).map(([type, count]) => (
+          {([
+            { type: 'person', count: stats.totalPeople },
+            { type: 'project', count: stats.totalProjects },
+            { type: 'commitment', count: stats.totalCommitments },
+            { type: 'concept', count: stats.totalConcepts },
+            { type: 'company', count: stats.totalCompanies },
+          ] as const).filter(s => s.count > 0).map(({ type, count }) => (
             <View key={type} style={styles.statBadge}>
               <Ionicons
                 name={TYPE_ICONS[type] || 'document'}
@@ -216,7 +224,7 @@ export function MemoryScreen() {
                 color={colors.textSecondary}
               />
               <Text style={styles.statBadgeText}>
-                {count as number}
+                {count}
               </Text>
             </View>
           ))}

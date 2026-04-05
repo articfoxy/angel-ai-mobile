@@ -83,37 +83,21 @@ export function DigestScreen() {
 
   const isToday = toDateString(currentDate) === toDateString(new Date());
 
-  const renderContent = (content: string) => {
-    // Simple markdown-like rendering
+  const renderMarkdown = (content: string) => {
     const lines = content.split('\n');
     return lines.map((line, index) => {
       const trimmed = line.trim();
       if (!trimmed) return <View key={index} style={styles.lineBreak} />;
 
-      // Headers
       if (trimmed.startsWith('### ')) {
-        return (
-          <Text key={index} style={styles.h3}>
-            {trimmed.replace('### ', '')}
-          </Text>
-        );
+        return <Text key={index} style={styles.h3}>{trimmed.replace('### ', '')}</Text>;
       }
       if (trimmed.startsWith('## ')) {
-        return (
-          <Text key={index} style={styles.h2}>
-            {trimmed.replace('## ', '')}
-          </Text>
-        );
+        return <Text key={index} style={styles.h2}>{trimmed.replace('## ', '')}</Text>;
       }
       if (trimmed.startsWith('# ')) {
-        return (
-          <Text key={index} style={styles.h1}>
-            {trimmed.replace('# ', '')}
-          </Text>
-        );
+        return <Text key={index} style={styles.h1}>{trimmed.replace('# ', '')}</Text>;
       }
-
-      // Bullet points
       if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
         return (
           <View key={index} style={styles.bulletItem}>
@@ -122,14 +106,67 @@ export function DigestScreen() {
           </View>
         );
       }
-
-      // Regular text
-      return (
-        <Text key={index} style={styles.bodyText}>
-          {trimmed}
-        </Text>
-      );
+      return <Text key={index} style={styles.bodyText}>{trimmed}</Text>;
     });
+  };
+
+  const renderStructuredContent = (content: Record<string, unknown>) => {
+    const sections: React.ReactNode[] = [];
+    const sectionMap: Record<string, string> = {
+      keyMoments: 'Key Moments',
+      followUps: 'Follow Ups',
+      opportunities: 'Opportunities',
+      ideas: 'Ideas',
+    };
+
+    if (content.sessionsCount != null || content.actionsCount != null) {
+      sections.push(
+        <View key="stats" style={styles.digestStatsRow}>
+          {content.sessionsCount != null && (
+            <Text style={styles.bodyText}>{String(content.sessionsCount)} sessions</Text>
+          )}
+          {content.actionsCount != null && (
+            <Text style={styles.bodyText}>{String(content.actionsCount)} actions</Text>
+          )}
+        </View>
+      );
+    }
+
+    for (const [key, label] of Object.entries(sectionMap)) {
+      const value = content[key];
+      if (!value) continue;
+      sections.push(
+        <View key={key}>
+          <Text style={styles.h3}>{label}</Text>
+          {Array.isArray(value) ? (
+            value.map((item, i) => (
+              <View key={i} style={styles.bulletItem}>
+                <Text style={styles.bullet}>•</Text>
+                <Text style={styles.bodyText}>{String(item)}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.bodyText}>{String(value)}</Text>
+          )}
+        </View>
+      );
+    }
+
+    if (content.raw && typeof content.raw === 'string') {
+      sections.push(<View key="raw">{renderMarkdown(content.raw)}</View>);
+    }
+
+    return sections.length > 0 ? sections : renderMarkdown(JSON.stringify(content, null, 2));
+  };
+
+  const renderContent = (content: unknown) => {
+    if (typeof content === 'string') {
+      return renderMarkdown(content);
+    }
+    if (content && typeof content === 'object' && !Array.isArray(content)) {
+      return renderStructuredContent(content as Record<string, unknown>);
+    }
+    return renderMarkdown(String(content));
   };
 
   return (
@@ -185,11 +222,7 @@ export function DigestScreen() {
           {digest.content ? (
             <View style={styles.section}>
               <View style={styles.sectionContent}>
-                {renderContent(
-                  typeof digest.content === 'string'
-                    ? digest.content
-                    : JSON.stringify(digest.content, null, 2)
-                )}
+                {renderContent(digest.content)}
               </View>
             </View>
           ) : null}
@@ -321,6 +354,11 @@ const styles = StyleSheet.create({
   },
   lineBreak: {
     height: spacing.sm,
+  },
+  digestStatsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
   },
   emptyState: {
     flex: 1,

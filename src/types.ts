@@ -13,15 +13,20 @@ export interface AuthResponse {
 }
 
 export interface Mode {
-  id: string;
+  modeId: string;
   name: string;
-  description: string;
   icon: string;
-  slug: string;
+  systemPrompt?: string;
+  whisperTypes?: string[];
+  postSessionOutputs?: string[];
+  maxWhispersPerMinute?: number;
+  isDefault?: boolean;
+  userSettings?: Record<string, unknown>;
 }
 
 export interface Session {
   id: string;
+  userId?: string;
   title?: string | null;
   mode: string;
   modeId: string;
@@ -51,18 +56,26 @@ export interface TranscriptSegment {
 
 export interface WhisperCardData {
   id: string;
+  sessionId?: string;
+  userId?: string;
   type: string;
   content: string;
   detail?: string | null;
   confidence?: number;
   priority?: string;
+  sourceMemoryId?: string | null;
+  sourceSessionId?: string | null;
+  ttl?: number | null;
+  requiresAck?: boolean;
   status?: string;
   deliveredAt?: string;
+  acknowledgedAt?: string | null;
   createdAt?: string;
 }
 
 export interface Memory {
   id: string;
+  userId?: string;
   type: string;
   title: string;
   content: string;
@@ -70,12 +83,18 @@ export interface Memory {
   updatedAt: string;
   metadata?: Record<string, unknown> | null;
   importance?: number;
+  accessCount?: number;
+  lastAccessed?: string | null;
   sessionId?: string | null;
 }
 
 export interface MemoryStats {
   total: number;
-  byType: Record<string, number>;
+  totalPeople: number;
+  totalProjects: number;
+  totalCommitments: number;
+  totalConcepts: number;
+  totalCompanies: number;
 }
 
 export interface DashboardStatsResponse {
@@ -100,6 +119,7 @@ export interface SessionsListResponse {
 
 export interface Digest {
   id: string;
+  userId?: string;
   date: string;
   content: unknown;
   opened?: boolean;

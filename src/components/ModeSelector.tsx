@@ -24,12 +24,12 @@ export function ModeSelector({ modes, selectedMode, onSelect }: ModeSelectorProp
   return (
     <View style={styles.grid}>
       {modes.map((mode) => {
-        const isSelected = selectedMode?.id === mode.id;
+        const isSelected = selectedMode?.modeId === mode.modeId;
         const iconName = MODE_ICONS[mode.name] || 'ellipse';
 
         return (
           <TouchableOpacity
-            key={mode.id}
+            key={mode.modeId}
             style={[styles.card, isSelected && styles.cardSelected]}
             onPress={() => onSelect(mode)}
             activeOpacity={0.7}
@@ -44,9 +44,11 @@ export function ModeSelector({ modes, selectedMode, onSelect }: ModeSelectorProp
             <Text style={[styles.modeName, isSelected && styles.modeNameSelected]}>
               {mode.name}
             </Text>
-            <Text style={styles.modeDescription} numberOfLines={2}>
-              {mode.description}
-            </Text>
+            {mode.systemPrompt && (
+              <Text style={styles.modeDescription} numberOfLines={2}>
+                {mode.systemPrompt}
+              </Text>
+            )}
           </TouchableOpacity>
         );
       })}

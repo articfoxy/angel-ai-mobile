@@ -39,13 +39,13 @@ interface SessionScreenProps {
 }
 
 const DEFAULT_MODES: Mode[] = [
-  { id: 'meeting', name: 'Meeting', description: 'Real-time meeting intelligence with action items and key decisions', icon: 'people', slug: 'meeting' },
-  { id: 'translator', name: 'Translator', description: 'Real-time language translation and interpretation', icon: 'language', slug: 'translator' },
-  { id: 'think', name: 'Think', description: 'Thought partner for brainstorming and problem solving', icon: 'bulb', slug: 'think' },
-  { id: 'sales', name: 'Sales', description: 'Live sales coaching with objection handling', icon: 'trending-up', slug: 'sales' },
-  { id: 'learning', name: 'Learning', description: 'Learning assistant with contextual explanations', icon: 'school', slug: 'learning' },
-  { id: 'coach', name: 'Coach', description: 'Personal communication and leadership coaching', icon: 'fitness', slug: 'coach' },
-  { id: 'builder', name: 'Builder', description: 'Build and refine ideas through conversation', icon: 'construct', slug: 'builder' },
+  { modeId: 'meeting', name: 'Meeting', icon: 'people' },
+  { modeId: 'translator', name: 'Translator', icon: 'language' },
+  { modeId: 'think', name: 'Think', icon: 'bulb' },
+  { modeId: 'sales', name: 'Sales', icon: 'trending-up' },
+  { modeId: 'learning', name: 'Learning', icon: 'school' },
+  { modeId: 'coach', name: 'Coach', icon: 'fitness' },
+  { modeId: 'builder', name: 'Builder', icon: 'construct' },
 ];
 
 export function SessionScreen({ route }: SessionScreenProps) {
@@ -82,7 +82,7 @@ export function SessionScreen({ route }: SessionScreenProps) {
   useEffect(() => {
     const modeId = route.params?.modeId;
     if (modeId && phase === 'mode-select') {
-      const mode = modes.find((m) => m.id === modeId);
+      const mode = modes.find((m) => m.modeId === modeId);
       if (mode) {
         selectMode(mode);
       }
