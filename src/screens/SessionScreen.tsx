@@ -298,53 +298,64 @@ export function SessionScreen({ route }: SessionScreenProps) {
 
 // Debrief sub-component
 function DebriefView({ debrief }: { debrief: Debrief }) {
+  // summary can be a Json object with fields like { summary, participants, keyFacts, promises, actionItems, risks }
+  // or a string, or null
+  const summaryObj = debrief.summary && typeof debrief.summary === 'object'
+    ? debrief.summary as Record<string, unknown>
+    : null;
+  const summaryText = summaryObj?.summary
+    ? String(summaryObj.summary)
+    : (typeof debrief.summary === 'string' ? debrief.summary : null);
+  const actionItems = Array.isArray(summaryObj?.actionItems) ? summaryObj.actionItems as string[] : [];
+  const keyFacts = Array.isArray(summaryObj?.keyFacts) ? summaryObj.keyFacts as string[] : [];
+
   return (
     <View style={styles.debriefContainer}>
       {/* Stats Row */}
       <View style={styles.debriefStats}>
         <View style={styles.debriefStat}>
-          <Text style={styles.debriefStatValue}>
-            {Math.floor(debrief.duration / 60)}m
-          </Text>
-          <Text style={styles.debriefStatLabel}>Duration</Text>
-        </View>
-        <View style={styles.debriefStat}>
-          <Text style={styles.debriefStatValue}>{debrief.memoriesCreated}</Text>
+          <Text style={styles.debriefStatValue}>{debrief.memoriesExtracted ?? 0}</Text>
           <Text style={styles.debriefStatLabel}>Memories</Text>
         </View>
         <View style={styles.debriefStat}>
-          <Text style={styles.debriefStatValue}>{debrief.highlights.length}</Text>
-          <Text style={styles.debriefStatLabel}>Highlights</Text>
+          <Text style={styles.debriefStatValue}>{debrief.savesDetected ?? 0}</Text>
+          <Text style={styles.debriefStatLabel}>Saves</Text>
+        </View>
+        <View style={styles.debriefStat}>
+          <Text style={styles.debriefStatValue}>{keyFacts.length}</Text>
+          <Text style={styles.debriefStatLabel}>Key Facts</Text>
         </View>
       </View>
 
       {/* Summary */}
-      <View style={styles.debriefSection}>
-        <Text style={styles.debriefSectionTitle}>Summary</Text>
-        <Text style={styles.debriefText}>{debrief.summary}</Text>
-      </View>
-
-      {/* Highlights */}
-      {debrief.highlights.length > 0 && (
+      {summaryText && (
         <View style={styles.debriefSection}>
-          <Text style={styles.debriefSectionTitle}>Highlights</Text>
-          {debrief.highlights.map((highlight, index) => (
+          <Text style={styles.debriefSectionTitle}>Summary</Text>
+          <Text style={styles.debriefText}>{summaryText}</Text>
+        </View>
+      )}
+
+      {/* Key Facts */}
+      {keyFacts.length > 0 && (
+        <View style={styles.debriefSection}>
+          <Text style={styles.debriefSectionTitle}>Key Facts</Text>
+          {keyFacts.map((fact, index) => (
             <View key={index} style={styles.debriefListItem}>
               <Ionicons name="star" size={14} color={colors.warning} />
-              <Text style={styles.debriefListText}>{highlight}</Text>
+              <Text style={styles.debriefListText}>{String(fact)}</Text>
             </View>
           ))}
         </View>
       )}
 
       {/* Action Items */}
-      {debrief.actionItems.length > 0 && (
+      {actionItems.length > 0 && (
         <View style={styles.debriefSection}>
           <Text style={styles.debriefSectionTitle}>Action Items</Text>
-          {debrief.actionItems.map((item, index) => (
+          {actionItems.map((item, index) => (
             <View key={index} style={styles.debriefListItem}>
               <Ionicons name="checkbox-outline" size={14} color={colors.primary} />
-              <Text style={styles.debriefListText}>{item}</Text>
+              <Text style={styles.debriefListText}>{String(item)}</Text>
             </View>
           ))}
         </View>

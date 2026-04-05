@@ -181,20 +181,15 @@ export function DigestScreen() {
             />
           }
         >
-          {/* Digest Sections */}
-          {digest.sections && digest.sections.length > 0 ? (
-            digest.sections.map((section, index) => (
-              <View key={index} style={styles.section}>
-                <Text style={styles.sectionTitle}>{section.title}</Text>
-                <View style={styles.sectionContent}>
-                  {renderContent(section.content)}
-                </View>
-              </View>
-            ))
-          ) : digest.content ? (
+          {/* Digest Content — backend content is Json, could be string or structured object */}
+          {digest.content ? (
             <View style={styles.section}>
               <View style={styles.sectionContent}>
-                {renderContent(digest.content)}
+                {renderContent(
+                  typeof digest.content === 'string'
+                    ? digest.content
+                    : JSON.stringify(digest.content, null, 2)
+                )}
               </View>
             </View>
           ) : null}

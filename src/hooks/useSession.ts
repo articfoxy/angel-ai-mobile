@@ -2,6 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Socket } from 'socket.io-client';
 import type { TranscriptSegment, WhisperCardData, Mode, Debrief } from '../types';
 import { AudioStreamer } from '../services/audio';
+import { api } from '../services/api';
+import type { Session } from '../types';
 
 export type SessionPhase = 'mode-select' | 'live' | 'debrief';
 
@@ -31,32 +33,34 @@ export function useSession(socket: Socket | null): UseSessionReturn {
   const [liveStatus, setLiveStatus] = useState<string>('idle');
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
   const segmentCounterRef = useRef(0);
+  const sessionIdRef = useRef<string | null>(null);
 
-  // Wire up socket listeners — use correct backend event names
+  // Wire up socket listeners — using correct backend event names
   useEffect(() => {
     if (!socket) return;
 
-    const onTranscriptionPartial = (data: { text: string; speaker?: string; timestamp?: number }) => {
+    // Backend emits: transcript:delta { text, isFinal: false, speaker, timestamp, confidence }
+    const onTranscriptDelta = (data: { text: string; speaker?: number | string; timestamp?: number }) => {
       const segment: TranscriptSegment = {
         id: `interim-${Date.now()}`,
         text: data.text,
-        speaker: data.speaker,
+        speaker: data.speaker != null ? String(data.speaker) : undefined,
         timestamp: data.timestamp || Date.now(),
         isFinal: false,
       };
       setTranscriptSegments((prev) => {
-        // Replace the last interim segment or add new one
         const withoutInterim = prev.filter((s) => s.isFinal);
         return [...withoutInterim, segment];
       });
     };
 
-    const onTranscriptionFinal = (data: { text: string; speaker?: string; timestamp?: number }) => {
+    // Backend emits: transcript:final { text, speaker, timestamp, confidence }
+    const onTranscriptFinal = (data: { text: string; speaker?: number | string; timestamp?: number }) => {
       segmentCounterRef.current += 1;
       const segment: TranscriptSegment = {
         id: `final-${segmentCounterRef.current}`,
         text: data.text,
-        speaker: data.speaker,
+        speaker: data.speaker != null ? String(data.speaker) : undefined,
         timestamp: data.timestamp || Date.now(),
         isFinal: true,
       };
@@ -66,42 +70,72 @@ export function useSession(socket: Socket | null): UseSessionReturn {
       });
     };
 
-    const onInferenceResult = (data: WhisperCardData) => {
+    // Backend emits: whisper:card — full WhisperCard Prisma object
+    const onWhisperCard = (data: WhisperCardData) => {
+      setIsThinking(false);
       setWhisperCards((prev) => [...prev, { ...data, id: data.id || `whisper-${Date.now()}` }]);
     };
 
-    const onThinking = (data: { active: boolean }) => {
-      setIsThinking(data.active);
+    // Backend emits: inference:thinking {} — empty object, just a signal
+    const onThinking = () => {
+      setIsThinking(true);
     };
 
-    const onLiveStatus = (data: { status: string }) => {
-      setLiveStatus(data.status);
+    // Backend emits: session:live-status { isLive, modeId, sessionId }
+    const onLiveStatus = (data: { isLive: boolean; modeId: string; sessionId: string }) => {
+      if (data.sessionId) {
+        sessionIdRef.current = data.sessionId;
+      }
+      setLiveStatus(data.isLive ? 'streaming' : 'stopped');
     };
 
-    const onSessionStatus = (data: { status: string }) => {
+    // Backend emits: session:status { sessionId, status, summary?, memoriesExtracted?, savesDetected? }
+    const onSessionStatus = (data: { sessionId: string; status: string; summary?: unknown; memoriesExtracted?: number; savesDetected?: number }) => {
       if (data.status === 'completed') {
+        setDebrief({
+          sessionId: data.sessionId,
+          summary: data.summary,
+          memoriesExtracted: data.memoriesExtracted,
+          savesDetected: data.savesDetected,
+        });
         setPhase('debrief');
       }
     };
 
-    const onDebriefReady = (data: Debrief) => {
-      setDebrief(data);
-      setPhase('debrief');
+    // Backend emits: debrief:ready { sessionId } — signal to fetch session details
+    const onDebriefReady = (data: { sessionId: string }) => {
+      const sid = data.sessionId || sessionIdRef.current;
+      if (sid) {
+        api.get<Session>(`sessions/${sid}`).then((session) => {
+          setDebrief({
+            sessionId: sid,
+            summary: session.summary,
+            memoriesExtracted: undefined,
+            savesDetected: undefined,
+          });
+          setPhase('debrief');
+        }).catch(() => {
+          // Still transition to debrief even if fetch fails
+          setPhase('debrief');
+        });
+      } else {
+        setPhase('debrief');
+      }
     };
 
-    // Backend event names per spec
-    socket.on('transcription:partial', onTranscriptionPartial);
-    socket.on('transcription:final', onTranscriptionFinal);
-    socket.on('inference:result', onInferenceResult);
+    // Backend event names from socket.ts / deepgram.service.ts / inference.service.ts
+    socket.on('transcript:delta', onTranscriptDelta);
+    socket.on('transcript:final', onTranscriptFinal);
+    socket.on('whisper:card', onWhisperCard);
     socket.on('inference:thinking', onThinking);
     socket.on('session:live-status', onLiveStatus);
     socket.on('session:status', onSessionStatus);
     socket.on('debrief:ready', onDebriefReady);
 
     return () => {
-      socket.off('transcription:partial', onTranscriptionPartial);
-      socket.off('transcription:final', onTranscriptionFinal);
-      socket.off('inference:result', onInferenceResult);
+      socket.off('transcript:delta', onTranscriptDelta);
+      socket.off('transcript:final', onTranscriptFinal);
+      socket.off('whisper:card', onWhisperCard);
       socket.off('inference:thinking', onThinking);
       socket.off('session:live-status', onLiveStatus);
       socket.off('session:status', onSessionStatus);
@@ -124,11 +158,9 @@ export function useSession(socket: Socket | null): UseSessionReturn {
   const selectMode = useCallback(
     (mode: Mode) => {
       setSelectedMode(mode);
-      if (socket) {
-        socket.emit('session:prepare', { modeId: mode.id });
-      }
+      // Note: backend has no 'session:prepare' event — mode is passed on session:start-live
     },
-    [socket]
+    []
   );
 
   const startSession = useCallback(async () => {
@@ -139,6 +171,7 @@ export function useSession(socket: Socket | null): UseSessionReturn {
     setIsThinking(false);
     setDebrief(null);
     segmentCounterRef.current = 0;
+    sessionIdRef.current = null;
 
     socket.emit('session:start-live', { modeId: selectedMode.id });
     setPhase('live');
@@ -170,7 +203,11 @@ export function useSession(socket: Socket | null): UseSessionReturn {
   const sendWhisperFeedback = useCallback(
     (whisperId: string, feedback: 'positive' | 'negative') => {
       if (socket) {
-        socket.emit('whisper:feedback', { whisperId, feedback });
+        // Backend expects: { cardId, helpful } not { whisperId, feedback }
+        socket.emit('whisper:feedback', {
+          cardId: whisperId,
+          helpful: feedback === 'positive',
+        });
       }
     },
     [socket]
@@ -185,6 +222,7 @@ export function useSession(socket: Socket | null): UseSessionReturn {
     setDebrief(null);
     setLiveStatus('idle');
     segmentCounterRef.current = 0;
+    sessionIdRef.current = null;
   }, []);
 
   return {

@@ -17,7 +17,7 @@ import { StatCard } from '../components/StatCard';
 import { ModePill } from '../components/ModePill';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
-import type { DashboardStats, EngagementStreak, Session, Mode } from '../types';
+import type { DashboardStatsResponse, StreakResponse, Session, SessionsListResponse, Mode } from '../types';
 
 type TabParamList = {
   Dashboard: undefined;
@@ -43,27 +43,32 @@ export function DashboardScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<TabParamList>>();
 
   const {
-    data: stats,
+    data: statsResponse,
     isLoading: statsLoading,
     refetch: refetchStats,
-  } = useApi<DashboardStats>('stats/dashboard');
+  } = useApi<DashboardStatsResponse>('stats/dashboard');
 
   const {
-    data: streak,
+    data: streakResponse,
     isLoading: streakLoading,
     refetch: refetchStreak,
-  } = useApi<EngagementStreak>('engagement/streak');
+  } = useApi<StreakResponse>('engagement/streak');
 
   const {
-    data: sessions,
+    data: sessionsResponse,
     isLoading: sessionsLoading,
     refetch: refetchSessions,
-  } = useApi<Session[]>('sessions?limit=5');
+  } = useApi<SessionsListResponse>('sessions?limit=5');
 
   const {
     data: modes,
     refetch: refetchModes,
   } = useApi<Mode[]>('modes');
+
+  // Unwrap backend response shapes
+  const streak = streakResponse ?? statsResponse?.streak;
+  const sessions = sessionsResponse?.sessions;
+  const stats = statsResponse;
 
   const isLoading = statsLoading || streakLoading || sessionsLoading;
   const [refreshing, setRefreshing] = React.useState(false);
@@ -87,9 +92,11 @@ export function DashboardScreen() {
     navigation.navigate('Session', { modeId: mode.id });
   };
 
-  const formatDuration = (seconds?: number) => {
-    if (!seconds) return '--';
-    const mins = Math.floor(seconds / 60);
+  const formatDuration = (session: Session) => {
+    if (!session.endedAt || !session.startedAt) return '--';
+    const ms = new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime();
+    if (ms <= 0) return '--';
+    const mins = Math.floor(ms / 60000);
     return `${mins}m`;
   };
 
@@ -111,7 +118,7 @@ export function DashboardScreen() {
         </View>
       </View>
 
-      {isLoading && !stats ? (
+      {isLoading && !statsResponse ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -121,17 +128,17 @@ export function DashboardScreen() {
           <View style={styles.statsRow}>
             <StatCard
               label="Streak"
-              value={streak?.current ?? stats?.streak ?? 0}
+              value={streak?.currentStreak ?? 0}
               color={colors.warning}
             />
             <StatCard
               label="Saves"
-              value={stats?.totalSaves ?? 0}
+              value={streak?.totalSaves ?? 0}
               color={colors.success}
             />
             <StatCard
               label="Memories"
-              value={stats?.totalMemories ?? 0}
+              value={stats?.memoryStats?.total ?? 0}
               color={colors.primary}
             />
           </View>
@@ -142,7 +149,7 @@ export function DashboardScreen() {
             <View style={styles.growthCard}>
               <Ionicons name="trending-up" size={20} color={colors.success} />
               <Text style={styles.growthText}>
-                {stats?.totalMemories ?? 0} total memories created
+                {stats?.memoryStats?.total ?? 0} total memories created
               </Text>
             </View>
           </View>
@@ -176,11 +183,11 @@ export function DashboardScreen() {
                   <View style={styles.sessionHeader}>
                     <View style={styles.sessionModeBadge}>
                       <Text style={styles.sessionModeText}>
-                        {session.modeName || session.modeId || 'Session'}
+                        {session.modeId || session.mode || 'Session'}
                       </Text>
                     </View>
                     <Text style={styles.sessionDuration}>
-                      {formatDuration(session.duration)}
+                      {formatDuration(session)}
                     </Text>
                   </View>
                   <Text style={styles.sessionDate}>
@@ -191,9 +198,9 @@ export function DashboardScreen() {
                       minute: '2-digit',
                     })}
                   </Text>
-                  {session.summary && (
+                  {session.summary != null && (
                     <Text style={styles.sessionSummary} numberOfLines={2}>
-                      {session.summary}
+                      {typeof session.summary === 'string' ? session.summary : String(JSON.stringify(session.summary))}
                     </Text>
                   )}
                 </View>

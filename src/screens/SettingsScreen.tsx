@@ -16,19 +16,25 @@ import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
 import type { Preferences } from '../types';
 
-const AUDIO_QUALITY_OPTIONS: Array<{ value: Preferences['audioQuality']; label: string }> = [
-  { value: 'low', label: 'Low (16kHz)' },
-  { value: 'medium', label: 'Medium (22kHz)' },
-  { value: 'high', label: 'High (44kHz)' },
+const WHISPER_FREQUENCY_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'silent', label: 'Silent' },
+  { value: 'minimal', label: 'Minimal' },
+  { value: 'active', label: 'Active' },
+  { value: 'aggressive', label: 'Aggressive' },
 ];
+
+const DEFAULT_PREFERENCES: Preferences = {
+  whisperFrequency: 'active',
+  digestTime: '20:00',
+  digestEnabled: true,
+  defaultMode: 'meeting',
+  timezone: 'UTC',
+};
 
 export function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const [preferences, setPreferences] = useState<Preferences>({
-    notifications: true,
-    audioQuality: 'low',
-  });
+  const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -40,7 +46,7 @@ export function SettingsScreen() {
     try {
       const prefs = await api.get<Preferences>('preferences');
       if (prefs) {
-        setPreferences(prefs);
+        setPreferences({ ...DEFAULT_PREFERENCES, ...prefs });
       }
     } catch {
       // Use defaults
@@ -57,7 +63,6 @@ export function SettingsScreen() {
       try {
         await api.put('preferences', newPrefs);
       } catch {
-        // Revert on error
         setPreferences(preferences);
         Alert.alert('Error', 'Failed to save preferences');
       } finally {
@@ -119,15 +124,15 @@ export function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>PREFERENCES</Text>
         <View style={styles.card}>
-          {/* Notifications */}
+          {/* Digest Enabled */}
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
-              <Ionicons name="notifications-outline" size={20} color={colors.text} />
-              <Text style={styles.settingLabel}>Notifications</Text>
+              <Ionicons name="newspaper-outline" size={20} color={colors.text} />
+              <Text style={styles.settingLabel}>Daily Digest</Text>
             </View>
             <Switch
-              value={preferences.notifications}
-              onValueChange={(value) => savePreferences({ notifications: value })}
+              value={preferences.digestEnabled}
+              onValueChange={(value) => savePreferences({ digestEnabled: value })}
               trackColor={{ false: colors.surfaceHover, true: colors.primary }}
               thumbColor={colors.text}
             />
@@ -135,26 +140,26 @@ export function SettingsScreen() {
 
           <View style={styles.divider} />
 
-          {/* Audio Quality */}
+          {/* Whisper Frequency */}
           <View style={styles.settingBlock}>
             <View style={styles.settingInfo}>
-              <Ionicons name="mic-outline" size={20} color={colors.text} />
-              <Text style={styles.settingLabel}>Audio Quality</Text>
+              <Ionicons name="chatbubble-outline" size={20} color={colors.text} />
+              <Text style={styles.settingLabel}>Whisper Frequency</Text>
             </View>
             <View style={styles.optionGroup}>
-              {AUDIO_QUALITY_OPTIONS.map((opt) => (
+              {WHISPER_FREQUENCY_OPTIONS.map((opt) => (
                 <TouchableOpacity
                   key={opt.value}
                   style={[
                     styles.optionPill,
-                    preferences.audioQuality === opt.value && styles.optionPillActive,
+                    preferences.whisperFrequency === opt.value && styles.optionPillActive,
                   ]}
-                  onPress={() => savePreferences({ audioQuality: opt.value })}
+                  onPress={() => savePreferences({ whisperFrequency: opt.value })}
                 >
                   <Text
                     style={[
                       styles.optionText,
-                      preferences.audioQuality === opt.value && styles.optionTextActive,
+                      preferences.whisperFrequency === opt.value && styles.optionTextActive,
                     ]}
                   >
                     {opt.label}
@@ -290,6 +295,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.xs,
     paddingLeft: spacing.xl + spacing.sm,
+    flexWrap: 'wrap',
   },
   optionPill: {
     backgroundColor: colors.surfaceHover,

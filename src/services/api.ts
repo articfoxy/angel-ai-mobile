@@ -41,8 +41,8 @@ async function request<T>(
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const errorBody = await response.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(errorBody.error || errorBody.message || `HTTP ${response.status}`);
   }
 
   // Handle 204 No Content
@@ -50,7 +50,12 @@ async function request<T>(
     return undefined as T;
   }
 
-  return response.json();
+  const json = await response.json();
+  // Backend wraps all responses in { success: true, data: ... }
+  if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
+    return json.data as T;
+  }
+  return json as T;
 }
 
 export const api = {

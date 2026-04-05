@@ -20,6 +20,13 @@ const TYPE_CONFIG: Record<
   action: { icon: 'flash', color: colors.warning },
   warning: { icon: 'warning', color: colors.danger },
   info: { icon: 'information-circle', color: colors.textSecondary },
+  // Backend inference types from mode configs
+  commitment: { icon: 'checkmark-circle', color: colors.success },
+  context: { icon: 'book', color: '#8b5cf6' },
+  key_point: { icon: 'key', color: colors.warning },
+  objection: { icon: 'shield', color: colors.danger },
+  question: { icon: 'help-circle', color: '#06b6d4' },
+  nudge: { icon: 'notifications', color: colors.primary },
 };
 
 export function WhisperCard({ card, onDismiss, onFeedback, index }: WhisperCardProps) {

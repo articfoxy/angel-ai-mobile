@@ -42,12 +42,13 @@ export async function login(email: string, password: string): Promise<User> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Login failed' }));
-    throw new Error(error.message || 'Login failed');
+    const error = await response.json().catch(() => ({ error: 'Login failed' }));
+    throw new Error(error.error || error.message || 'Login failed');
   }
 
-  const data: AuthResponse = await response.json();
-  await storeToken(data.token);
+  const json = await response.json();
+  const data: AuthResponse = json.data ?? json;
+  await storeToken(data.accessToken);
   if (data.refreshToken) {
     await storeRefreshToken(data.refreshToken);
   }
@@ -66,12 +67,13 @@ export async function register(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Registration failed' }));
-    throw new Error(error.message || 'Registration failed');
+    const error = await response.json().catch(() => ({ error: 'Registration failed' }));
+    throw new Error(error.error || error.message || 'Registration failed');
   }
 
-  const data: AuthResponse = await response.json();
-  await storeToken(data.token);
+  const json = await response.json();
+  const data: AuthResponse = json.data ?? json;
+  await storeToken(data.accessToken);
   if (data.refreshToken) {
     await storeRefreshToken(data.refreshToken);
   }
@@ -99,10 +101,11 @@ export async function refreshToken(): Promise<string> {
     throw new Error('Token refresh failed');
   }
 
-  const data: AuthResponse = await response.json();
-  await storeToken(data.token);
+  const json = await response.json();
+  const data = json.data ?? json;
+  await storeToken(data.accessToken);
   if (data.refreshToken) {
     await storeRefreshToken(data.refreshToken);
   }
-  return data.token;
+  return data.accessToken;
 }

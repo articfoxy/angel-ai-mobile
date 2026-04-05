@@ -1,13 +1,14 @@
 export interface User {
   id: string;
   email: string;
-  name: string;
+  name: string | null;
+  preferences?: Record<string, unknown> | null;
   createdAt: string;
 }
 
 export interface AuthResponse {
-  token: string;
-  refreshToken?: string;
+  accessToken: string;
+  refreshToken: string;
   user: User;
 }
 
@@ -21,14 +22,23 @@ export interface Mode {
 
 export interface Session {
   id: string;
+  title?: string | null;
+  mode: string;
   modeId: string;
-  modeName?: string;
-  status: 'active' | 'completed' | 'cancelled';
+  isLive?: boolean;
+  status: string;
   startedAt: string;
-  endedAt?: string;
-  duration?: number;
-  transcript?: TranscriptSegment[];
-  summary?: string;
+  endedAt?: string | null;
+  transcript?: unknown;
+  summary?: unknown;
+  participants?: unknown;
+  keyFacts?: unknown;
+  promises?: unknown;
+  actionItems?: unknown;
+  risks?: unknown;
+  createdAt: string;
+  updatedAt?: string;
+  whisperCards?: WhisperCardData[];
 }
 
 export interface TranscriptSegment {
@@ -41,20 +51,26 @@ export interface TranscriptSegment {
 
 export interface WhisperCardData {
   id: string;
-  type: 'suggestion' | 'insight' | 'action' | 'warning' | 'info';
+  type: string;
   content: string;
-  detail?: string;
-  timestamp: number;
+  detail?: string | null;
+  confidence?: number;
+  priority?: string;
+  status?: string;
+  deliveredAt?: string;
+  createdAt?: string;
 }
 
 export interface Memory {
   id: string;
-  type: 'person' | 'project' | 'commitment' | 'concept' | 'company';
+  type: string;
   title: string;
   content: string;
   createdAt: string;
   updatedAt: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> | null;
+  importance?: number;
+  sessionId?: string | null;
 }
 
 export interface MemoryStats {
@@ -62,45 +78,45 @@ export interface MemoryStats {
   byType: Record<string, number>;
 }
 
-export interface DashboardStats {
+export interface DashboardStatsResponse {
+  streak: StreakResponse;
+  memoryStats: MemoryStats;
   totalSessions: number;
-  totalMemories: number;
-  totalSaves: number;
-  streak: number;
-  weeklyGrowth?: number;
+  modeUsage: Record<string, number>;
 }
 
-export interface EngagementStreak {
-  current: number;
-  longest: number;
-  lastActiveDate: string;
+export interface StreakResponse {
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate: string | null;
+  totalSessions: number;
+  totalSaves: number;
+}
+
+export interface SessionsListResponse {
+  sessions: Session[];
+  total: number;
 }
 
 export interface Digest {
   id: string;
   date: string;
-  content: string;
-  sections?: DigestSection[];
+  content: unknown;
+  opened?: boolean;
   createdAt: string;
 }
 
-export interface DigestSection {
-  title: string;
-  content: string;
-  type: string;
-}
-
 export interface Preferences {
-  notifications: boolean;
-  defaultMode?: string;
-  audioQuality: 'low' | 'medium' | 'high';
+  whisperFrequency: string;
+  digestTime: string;
+  digestEnabled: boolean;
+  defaultMode: string;
+  timezone: string;
 }
 
 export interface Debrief {
   sessionId: string;
-  summary: string;
-  highlights: string[];
-  actionItems: string[];
-  duration: number;
-  memoriesCreated: number;
+  summary: unknown;
+  memoriesExtracted?: number;
+  savesDetected?: number;
 }
