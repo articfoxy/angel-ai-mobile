@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Angel AI",
+    "slug": "angel-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "angelai",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.angelai.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Angel AI needs microphone access to provide real-time conversation intelligence.",
+        "UIBackgroundModes": ["audio"]
+      }
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0f"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Angel AI needs microphone access to provide real-time conversation intelligence."
+        }
+      ]
+    ]
+  }
+}
