@@ -44,9 +44,9 @@ export function ModeSelector({ modes, selectedMode, onSelect }: ModeSelectorProp
             <Text style={[styles.modeName, isSelected && styles.modeNameSelected]}>
               {mode.name}
             </Text>
-            {mode.systemPrompt && (
-              <Text style={styles.modeDescription} numberOfLines={2}>
-                {mode.systemPrompt}
+            {(mode.description || mode.systemPrompt) && (
+              <Text style={styles.modeDescription} numberOfLines={1}>
+                {mode.description || mode.systemPrompt}
               </Text>
             )}
           </TouchableOpacity>

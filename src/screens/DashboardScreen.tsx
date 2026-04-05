@@ -14,7 +14,6 @@ import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { colors, spacing, fontSize } from '../theme';
 import { StatCard } from '../components/StatCard';
-import { ModePill } from '../components/ModePill';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
 import type { DashboardStatsResponse, StreakResponse, Session, SessionsListResponse, Mode } from '../types';
@@ -28,14 +27,24 @@ type TabParamList = {
 };
 
 const DEFAULT_MODES: Mode[] = [
-  { modeId: 'meeting', name: 'Meeting', icon: 'people' },
-  { modeId: 'translator', name: 'Translator', icon: 'language' },
-  { modeId: 'think', name: 'Think', icon: 'bulb' },
-  { modeId: 'sales', name: 'Sales', icon: 'trending-up' },
-  { modeId: 'learning', name: 'Learning', icon: 'school' },
-  { modeId: 'coach', name: 'Coach', icon: 'fitness' },
-  { modeId: 'builder', name: 'Builder', icon: 'construct' },
+  { modeId: 'meeting', name: 'Meeting', icon: 'people', description: 'Real-time meeting intelligence' },
+  { modeId: 'translator', name: 'Translator', icon: 'language', description: 'Live translation assistance' },
+  { modeId: 'think', name: 'Think', icon: 'bulb', description: 'Brainstorm with AI' },
+  { modeId: 'sales', name: 'Sales', icon: 'trending-up', description: 'Close deals with AI coaching' },
+  { modeId: 'learning', name: 'Learning', icon: 'school', description: 'Learn faster with AI insights' },
+  { modeId: 'coach', name: 'Coach', icon: 'fitness', description: 'Personal performance coaching' },
+  { modeId: 'builder', name: 'Builder', icon: 'construct', description: 'Build better with AI assistance' },
 ];
+
+const MODE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  Meeting: 'people',
+  Translator: 'language',
+  Think: 'bulb',
+  Sales: 'trending-up',
+  Learning: 'school',
+  Coach: 'fitness',
+  Builder: 'construct',
+};
 
 export function DashboardScreen() {
   const insets = useSafeAreaInsets();
@@ -162,15 +171,22 @@ export function DashboardScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.modesScroll}
             >
-              {displayModes.map((mode) => (
-                <TouchableOpacity
-                  key={mode.modeId}
-                  onPress={() => handleModePress(mode)}
-                  activeOpacity={0.7}
-                >
-                  <ModePill name={mode.name} />
-                </TouchableOpacity>
-              ))}
+              {displayModes.map((mode) => {
+                const iconName = MODE_ICONS[mode.name] || 'ellipse';
+                return (
+                  <TouchableOpacity
+                    key={mode.modeId}
+                    style={styles.modeCard}
+                    onPress={() => handleModePress(mode)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.modeCardIcon}>
+                      <Ionicons name={iconName} size={22} color={colors.primary} />
+                    </View>
+                    <Text style={styles.modeCardName}>{mode.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
 
@@ -280,6 +296,31 @@ const styles = StyleSheet.create({
   modesScroll: {
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
+  },
+  modeCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 88,
+    height: 88,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modeCardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceHover,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  modeCardName: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
   },
   sessionCard: {
     backgroundColor: colors.surface,

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, fontSize } from '../theme';
 import { useAuth } from '../hooks/useAuth';
 
@@ -87,6 +88,10 @@ export function LoginScreen() {
   };
 
   return (
+    <LinearGradient
+      colors={['#0a0a0f', '#12122a', '#0a0a0f']}
+      style={styles.gradientBg}
+    >
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -94,9 +99,12 @@ export function LoginScreen() {
       <StatusBar style="light" />
       <View style={styles.content}>
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
+          <LinearGradient
+            colors={['#6366f1', '#8b5cf6']}
+            style={styles.logoContainer}
+          >
             <Text style={styles.logoIcon}>✦</Text>
-          </View>
+          </LinearGradient>
           <Text style={styles.title}>Angel AI</Text>
           <Text style={styles.subtitle}>
             {isRegister ? 'Create your account' : 'Welcome back'}
@@ -119,7 +127,7 @@ export function LoginScreen() {
           {appleAuthAvailable && (
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
+              <Text style={styles.dividerText}>or continue with email</Text>
               <View style={styles.dividerLine} />
             </View>
           )}
@@ -171,18 +179,24 @@ export function LoginScreen() {
           {error && <Text style={styles.error}>{error}</Text>}
 
           <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
             onPress={handleSubmit}
             disabled={isLoading}
             activeOpacity={0.8}
           >
-            {isLoading ? (
-              <ActivityIndicator color={colors.text} />
-            ) : (
-              <Text style={styles.buttonText}>
-                {isRegister ? 'Create Account' : 'Sign In'}
-              </Text>
-            )}
+            <LinearGradient
+              colors={['#6366f1', '#8b5cf6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.button, isLoading && styles.buttonDisabled]}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={colors.text} />
+              ) : (
+                <Text style={styles.buttonText}>
+                  {isRegister ? 'Create Account' : 'Sign In'}
+                </Text>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -201,13 +215,16 @@ export function LoginScreen() {
         </View>
       </View>
     </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientBg: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
   },
   content: {
     flex: 1,
@@ -222,7 +239,6 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
@@ -286,7 +302,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   button: {
-    backgroundColor: colors.primary,
     borderRadius: 12,
     padding: spacing.md,
     alignItems: 'center',

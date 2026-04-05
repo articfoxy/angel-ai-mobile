@@ -16,6 +16,7 @@ export interface Mode {
   modeId: string;
   name: string;
   icon: string;
+  description?: string;
   systemPrompt?: string;
   whisperTypes?: string[];
   postSessionOutputs?: string[];

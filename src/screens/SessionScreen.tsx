@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming } from 'react-native-reanimated';
 import { colors, spacing, fontSize } from '../theme';
 import { ModeSelector } from '../components/ModeSelector';
 import { ModePill } from '../components/ModePill';
@@ -39,13 +41,13 @@ interface SessionScreenProps {
 }
 
 const DEFAULT_MODES: Mode[] = [
-  { modeId: 'meeting', name: 'Meeting', icon: 'people' },
-  { modeId: 'translator', name: 'Translator', icon: 'language' },
-  { modeId: 'think', name: 'Think', icon: 'bulb' },
-  { modeId: 'sales', name: 'Sales', icon: 'trending-up' },
-  { modeId: 'learning', name: 'Learning', icon: 'school' },
-  { modeId: 'coach', name: 'Coach', icon: 'fitness' },
-  { modeId: 'builder', name: 'Builder', icon: 'construct' },
+  { modeId: 'meeting', name: 'Meeting', icon: 'people', description: 'Real-time meeting intelligence' },
+  { modeId: 'translator', name: 'Translator', icon: 'language', description: 'Live translation assistance' },
+  { modeId: 'think', name: 'Think', icon: 'bulb', description: 'Brainstorm with AI' },
+  { modeId: 'sales', name: 'Sales', icon: 'trending-up', description: 'Close deals with AI coaching' },
+  { modeId: 'learning', name: 'Learning', icon: 'school', description: 'Learn faster with AI insights' },
+  { modeId: 'coach', name: 'Coach', icon: 'fitness', description: 'Personal performance coaching' },
+  { modeId: 'builder', name: 'Builder', icon: 'construct', description: 'Build better with AI assistance' },
 ];
 
 export function SessionScreen({ route }: SessionScreenProps) {
@@ -70,6 +72,53 @@ export function SessionScreen({ route }: SessionScreenProps) {
   const { data: apiModes } = useApi<Mode[]>('modes');
   const modes = apiModes || DEFAULT_MODES;
   const [isStarting, setIsStarting] = useState(false);
+  const [startingModeName, setStartingModeName] = useState<string | null>(null);
+  const [sessionElapsed, setSessionElapsed] = useState(0);
+  const sessionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Pulsing live dot animation
+  const liveDotOpacity = useSharedValue(1);
+  const liveDotStyle = useAnimatedStyle(() => ({
+    opacity: liveDotOpacity.value,
+  }));
+
+  useEffect(() => {
+    if (phase === 'live') {
+      liveDotOpacity.value = withRepeat(
+        withTiming(0.3, { duration: 1000 }),
+        -1,
+        true,
+      );
+    } else {
+      liveDotOpacity.value = 1;
+    }
+  }, [phase, liveDotOpacity]);
+
+  // Session timer
+  useEffect(() => {
+    if (phase === 'live') {
+      setSessionElapsed(0);
+      sessionTimerRef.current = setInterval(() => {
+        setSessionElapsed((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+        sessionTimerRef.current = null;
+      }
+    }
+    return () => {
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+      }
+    };
+  }, [phase]);
+
+  const formatTimer = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
 
   // Connect socket when screen mounts
   useEffect(() => {
@@ -78,16 +127,45 @@ export function SessionScreen({ route }: SessionScreenProps) {
     }
   }, [connect, isConnected]);
 
+  // Auto-start session when a mode is selected
+  const handleModeSelect = useCallback((mode: Mode) => {
+    selectMode(mode);
+    setStartingModeName(mode.name);
+    setTimeout(async () => {
+      setIsStarting(true);
+      try {
+        const granted = await requestMicPermission();
+        if (!granted) {
+          Alert.alert(
+            'Microphone Access Required',
+            'Angel AI needs microphone access to capture audio. Please enable it in Settings.',
+          );
+          setIsStarting(false);
+          setStartingModeName(null);
+          return;
+        }
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        await startSession();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to start session';
+        Alert.alert('Error', message);
+      } finally {
+        setIsStarting(false);
+        setStartingModeName(null);
+      }
+    }, 500);
+  }, [selectMode, startSession]);
+
   // Handle incoming modeId from navigation
   useEffect(() => {
     const modeId = route.params?.modeId;
     if (modeId && phase === 'mode-select') {
       const mode = modes.find((m) => m.modeId === modeId);
       if (mode) {
-        selectMode(mode);
+        handleModeSelect(mode);
       }
     }
-  }, [route.params?.modeId, modes, phase, selectMode]);
+  }, [route.params?.modeId, modes, phase, handleModeSelect]);
 
   // Handle socket disconnection during live session
   useEffect(() => {
@@ -96,35 +174,6 @@ export function SessionScreen({ route }: SessionScreenProps) {
       connect();
     }
   }, [phase, isConnected, connect]);
-
-  const handleStart = useCallback(async () => {
-    if (!selectedMode) {
-      Alert.alert('Select a Mode', 'Please select a conversation mode to begin.');
-      return;
-    }
-
-    setIsStarting(true);
-
-    try {
-      const granted = await requestMicPermission();
-      if (!granted) {
-        Alert.alert(
-          'Microphone Access Required',
-          'Angel AI needs microphone access to capture audio. Please enable it in Settings.',
-        );
-        setIsStarting(false);
-        return;
-      }
-
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      await startSession();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to start session';
-      Alert.alert('Error', message);
-    } finally {
-      setIsStarting(false);
-    }
-  }, [selectedMode, startSession]);
 
   const handleStop = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -165,29 +214,23 @@ export function SessionScreen({ route }: SessionScreenProps) {
           <ModeSelector
             modes={modes}
             selectedMode={selectedMode}
-            onSelect={selectMode}
+            onSelect={handleModeSelect}
           />
         </ScrollView>
 
-        {selectedMode && (
+        {startingModeName && (
           <View style={[styles.bottomAction, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-            <TouchableOpacity
-              style={[styles.startButton, isStarting && styles.buttonDisabled]}
-              onPress={handleStart}
-              disabled={isStarting}
-              activeOpacity={0.8}
+            <LinearGradient
+              colors={['#6366f1', '#8b5cf6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.startButton, styles.buttonDisabled]}
             >
-              {isStarting ? (
-                <ActivityIndicator color={colors.text} />
-              ) : (
-                <>
-                  <Ionicons name="mic" size={22} color={colors.text} />
-                  <Text style={styles.startButtonText}>
-                    Start {selectedMode.name} Session
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+              <ActivityIndicator color={colors.text} />
+              <Text style={styles.startButtonText}>
+                Starting {startingModeName}...
+              </Text>
+            </LinearGradient>
           </View>
         )}
       </View>
@@ -204,10 +247,13 @@ export function SessionScreen({ route }: SessionScreenProps) {
             {selectedMode && <ModePill name={selectedMode.name} isActive />}
           </View>
           <View style={styles.liveIndicator}>
-            <View style={[styles.liveDot, !isConnected && styles.liveDotDisconnected]} />
+            <ReanimatedAnimated.View style={[styles.liveDot, !isConnected && styles.liveDotDisconnected, liveDotStyle]} />
             <Text style={[styles.liveText, !isConnected && styles.liveTextDisconnected]}>
               {isConnected ? 'LIVE' : 'RECONNECTING'}
             </Text>
+            {isConnected && (
+              <Text style={styles.timerText}>{formatTimer(sessionElapsed)}</Text>
+            )}
           </View>
         </View>
 
@@ -284,12 +330,18 @@ export function SessionScreen({ route }: SessionScreenProps) {
 
       <View style={[styles.bottomAction, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
         <TouchableOpacity
-          style={styles.newSessionButton}
           onPress={handleNewSession}
           activeOpacity={0.8}
         >
-          <Ionicons name="add" size={22} color={colors.text} />
-          <Text style={styles.startButtonText}>New Session</Text>
+          <LinearGradient
+            colors={['#6366f1', '#8b5cf6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.newSessionButton}
+          >
+            <Ionicons name="add" size={22} color={colors.text} />
+            <Text style={styles.startButtonText}>New Session</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </View>
@@ -398,7 +450,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   startButton: {
-    backgroundColor: colors.primary,
     borderRadius: 14,
     padding: spacing.md,
     flexDirection: 'row',
@@ -431,7 +482,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   newSessionButton: {
-    backgroundColor: colors.primary,
     borderRadius: 14,
     padding: spacing.md,
     flexDirection: 'row',
@@ -476,6 +526,13 @@ const styles = StyleSheet.create({
   liveTextDisconnected: {
     color: colors.warning,
   },
+  timerText: {
+    color: colors.textSecondary,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginLeft: 4,
+  },
   statusBar: {
     backgroundColor: colors.surfaceHover,
     paddingHorizontal: spacing.md,
@@ -518,8 +575,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: spacing.md,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   debriefStatValue: {
     color: colors.text,
@@ -535,8 +595,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 12,
     padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
     gap: spacing.sm,
   },
   debriefSectionTitle: {
