@@ -14,12 +14,15 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.angelai.app",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Angel AI needs microphone access to provide real-time conversation intelligence.",
-        "UIBackgroundModes": ["audio"],
+        "UIBackgroundModes": [
+          "audio"
+        ],
         "NSBluetoothAlwaysUsageDescription": "Angel AI uses Bluetooth to connect to your AirPods for hands-free conversation intelligence.",
-        "NSBluetoothPeripheralUsageDescription": "Angel AI uses Bluetooth to connect to your AirPods for hands-free conversation intelligence."
+        "NSBluetoothPeripheralUsageDescription": "Angel AI uses Bluetooth to connect to your AirPods for hands-free conversation intelligence.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "splash": {
@@ -38,7 +41,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "89ff72e2-332f-4877-a18f-24270166b0ca"
       }
     }
   }

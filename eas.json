@@ -21,16 +21,14 @@
       "distribution": "store",
       "ios": {
         "autoIncrement": true
-      },
-      "autoSubmit": true,
-      "submittedProfile": "production"
+      }
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "appleId": "articfoxy@icloud.com",
-        "ascAppId": "",
+        "appleId": "jansentengwn@hotmail.com",
+        "ascAppId": "6761681787",
         "appleTeamId": "FPW3JJCJCW"
       }
     }
