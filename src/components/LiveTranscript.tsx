@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { colors, spacing, fontSize } from '../theme';
 import type { TranscriptSegment } from '../types';
@@ -22,7 +22,7 @@ function getSpeakerColor(speaker?: string): string {
   return SPEAKER_COLORS[index];
 }
 
-function SegmentItem({ item }: { item: TranscriptSegment }) {
+const SegmentItem = React.memo(function SegmentItem({ item }: { item: TranscriptSegment }) {
   return (
     <View style={styles.segment}>
       {item.speaker && (
@@ -35,18 +35,10 @@ function SegmentItem({ item }: { item: TranscriptSegment }) {
       </Text>
     </View>
   );
-}
+});
 
 export function LiveTranscript({ segments }: LiveTranscriptProps) {
   const flatListRef = useRef<FlatList<TranscriptSegment>>(null);
-
-  useEffect(() => {
-    if (segments.length > 0 && flatListRef.current) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
-  }, [segments.length]);
 
   if (segments.length === 0) {
     return (

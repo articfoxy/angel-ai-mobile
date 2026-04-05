@@ -7,6 +7,7 @@ import type { WhisperCardData } from '../types';
 interface WhisperCardProps {
   card: WhisperCardData;
   onDismiss: (id: string) => void;
+  onFeedback: (id: string, feedback: 'positive' | 'negative') => void;
   index: number;
 }
 
@@ -21,9 +22,15 @@ const TYPE_CONFIG: Record<
   info: { icon: 'information-circle', color: colors.textSecondary },
 };
 
-export function WhisperCard({ card, onDismiss, index }: WhisperCardProps) {
+export function WhisperCard({ card, onDismiss, onFeedback, index }: WhisperCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
   const config = TYPE_CONFIG[card.type] || TYPE_CONFIG.info;
+
+  const handleFeedback = (feedback: 'positive' | 'negative') => {
+    setFeedbackGiven(feedback);
+    onFeedback(card.id, feedback);
+  };
 
   return (
     <View
@@ -65,11 +72,27 @@ export function WhisperCard({ card, onDismiss, index }: WhisperCardProps) {
       )}
 
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="thumbs-up-outline" size={16} color={colors.textSecondary} />
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => handleFeedback('positive')}
+          disabled={feedbackGiven !== null}
+        >
+          <Ionicons
+            name={feedbackGiven === 'positive' ? 'thumbs-up' : 'thumbs-up-outline'}
+            size={16}
+            color={feedbackGiven === 'positive' ? colors.success : colors.textSecondary}
+          />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="thumbs-down-outline" size={16} color={colors.textSecondary} />
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => handleFeedback('negative')}
+          disabled={feedbackGiven !== null}
+        >
+          <Ionicons
+            name={feedbackGiven === 'negative' ? 'thumbs-down' : 'thumbs-down-outline'}
+            size={16}
+            color={feedbackGiven === 'negative' ? colors.danger : colors.textSecondary}
+          />
         </TouchableOpacity>
       </View>
     </View>

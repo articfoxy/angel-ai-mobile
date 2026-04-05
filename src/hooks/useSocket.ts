@@ -17,6 +17,12 @@ export function useSocket(): UseSocketReturn {
   const connect = useCallback(async () => {
     try {
       const s = await connectSocket();
+
+      // Remove existing listeners before adding new ones to prevent accumulation
+      s.off('connect');
+      s.off('disconnect');
+      s.off('connect_error');
+
       socketRef.current = s;
       setSocket(s);
 

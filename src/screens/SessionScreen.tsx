@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -64,6 +64,7 @@ export function SessionScreen({ route }: SessionScreenProps) {
     stopSession,
     dismissWhisper,
     resetSession,
+    sendWhisperFeedback,
   } = useSession(socket);
 
   const { data: apiModes } = useApi<Mode[]>('modes');
@@ -87,6 +88,14 @@ export function SessionScreen({ route }: SessionScreenProps) {
       }
     }
   }, [route.params?.modeId, modes, phase, selectMode]);
+
+  // Handle socket disconnection during live session
+  useEffect(() => {
+    if (phase === 'live' && !isConnected) {
+      // Socket disconnected mid-session — try to reconnect
+      connect();
+    }
+  }, [phase, isConnected, connect]);
 
   const handleStart = useCallback(async () => {
     if (!selectedMode) {
@@ -125,6 +134,19 @@ export function SessionScreen({ route }: SessionScreenProps) {
   const handleNewSession = useCallback(() => {
     resetSession();
   }, [resetSession]);
+
+  const handleWhisperFeedback = useCallback(
+    (id: string, feedback: 'positive' | 'negative') => {
+      sendWhisperFeedback(id, feedback);
+    },
+    [sendWhisperFeedback]
+  );
+
+  // Memoize visible whispers to avoid creating new arrays on every render
+  const visibleWhispers = useMemo(
+    () => whisperCards.slice(-3).reverse(),
+    [whisperCards]
+  );
 
   // --- RENDER: Mode Selection ---
   if (phase === 'mode-select') {
@@ -174,8 +196,6 @@ export function SessionScreen({ route }: SessionScreenProps) {
 
   // --- RENDER: Live Session ---
   if (phase === 'live') {
-    const visibleWhispers = whisperCards.slice(-3).reverse();
-
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         {/* Live Header */}
@@ -184,8 +204,10 @@ export function SessionScreen({ route }: SessionScreenProps) {
             {selectedMode && <ModePill name={selectedMode.name} isActive />}
           </View>
           <View style={styles.liveIndicator}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE</Text>
+            <View style={[styles.liveDot, !isConnected && styles.liveDotDisconnected]} />
+            <Text style={[styles.liveText, !isConnected && styles.liveTextDisconnected]}>
+              {isConnected ? 'LIVE' : 'RECONNECTING'}
+            </Text>
           </View>
         </View>
 
@@ -212,6 +234,7 @@ export function SessionScreen({ route }: SessionScreenProps) {
                 key={card.id}
                 card={card}
                 onDismiss={dismissWhisper}
+                onFeedback={handleWhisperFeedback}
                 index={index}
               />
             ))}
@@ -430,11 +453,17 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: colors.danger,
   },
+  liveDotDisconnected: {
+    backgroundColor: colors.warning,
+  },
   liveText: {
     color: colors.danger,
     fontSize: fontSize.xs,
     fontWeight: '700',
     letterSpacing: 1,
+  },
+  liveTextDisconnected: {
+    color: colors.warning,
   },
   statusBar: {
     backgroundColor: colors.surfaceHover,

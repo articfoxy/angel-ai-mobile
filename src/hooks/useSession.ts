@@ -18,6 +18,7 @@ interface UseSessionReturn {
   stopSession: () => Promise<void>;
   dismissWhisper: (id: string) => void;
   resetSession: () => void;
+  sendWhisperFeedback: (whisperId: string, feedback: 'positive' | 'negative') => void;
 }
 
 export function useSession(socket: Socket | null): UseSessionReturn {
@@ -31,11 +32,11 @@ export function useSession(socket: Socket | null): UseSessionReturn {
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
   const segmentCounterRef = useRef(0);
 
-  // Wire up socket listeners
+  // Wire up socket listeners — use correct backend event names
   useEffect(() => {
     if (!socket) return;
 
-    const onTranscriptDelta = (data: { text: string; speaker?: string; timestamp?: number }) => {
+    const onTranscriptionPartial = (data: { text: string; speaker?: string; timestamp?: number }) => {
       const segment: TranscriptSegment = {
         id: `interim-${Date.now()}`,
         text: data.text,
@@ -50,7 +51,7 @@ export function useSession(socket: Socket | null): UseSessionReturn {
       });
     };
 
-    const onTranscriptFinal = (data: { text: string; speaker?: string; timestamp?: number }) => {
+    const onTranscriptionFinal = (data: { text: string; speaker?: string; timestamp?: number }) => {
       segmentCounterRef.current += 1;
       const segment: TranscriptSegment = {
         id: `final-${segmentCounterRef.current}`,
@@ -65,7 +66,7 @@ export function useSession(socket: Socket | null): UseSessionReturn {
       });
     };
 
-    const onWhisperCard = (data: WhisperCardData) => {
+    const onInferenceResult = (data: WhisperCardData) => {
       setWhisperCards((prev) => [...prev, { ...data, id: data.id || `whisper-${Date.now()}` }]);
     };
 
@@ -88,24 +89,37 @@ export function useSession(socket: Socket | null): UseSessionReturn {
       setPhase('debrief');
     };
 
-    socket.on('transcript:delta', onTranscriptDelta);
-    socket.on('transcript:final', onTranscriptFinal);
-    socket.on('whisper:card', onWhisperCard);
+    // Backend event names per spec
+    socket.on('transcription:partial', onTranscriptionPartial);
+    socket.on('transcription:final', onTranscriptionFinal);
+    socket.on('inference:result', onInferenceResult);
     socket.on('inference:thinking', onThinking);
     socket.on('session:live-status', onLiveStatus);
     socket.on('session:status', onSessionStatus);
     socket.on('debrief:ready', onDebriefReady);
 
     return () => {
-      socket.off('transcript:delta', onTranscriptDelta);
-      socket.off('transcript:final', onTranscriptFinal);
-      socket.off('whisper:card', onWhisperCard);
+      socket.off('transcription:partial', onTranscriptionPartial);
+      socket.off('transcription:final', onTranscriptionFinal);
+      socket.off('inference:result', onInferenceResult);
       socket.off('inference:thinking', onThinking);
       socket.off('session:live-status', onLiveStatus);
       socket.off('session:status', onSessionStatus);
       socket.off('debrief:ready', onDebriefReady);
     };
   }, [socket]);
+
+  // Clean up AudioStreamer on unmount to prevent orphaned recording loops
+  useEffect(() => {
+    return () => {
+      if (audioStreamerRef.current) {
+        audioStreamerRef.current.stop().catch(() => {
+          // Best effort cleanup
+        });
+        audioStreamerRef.current = null;
+      }
+    };
+  }, []);
 
   const selectMode = useCallback(
     (mode: Mode) => {
@@ -153,6 +167,15 @@ export function useSession(socket: Socket | null): UseSessionReturn {
     setWhisperCards((prev) => prev.filter((w) => w.id !== id));
   }, []);
 
+  const sendWhisperFeedback = useCallback(
+    (whisperId: string, feedback: 'positive' | 'negative') => {
+      if (socket) {
+        socket.emit('whisper:feedback', { whisperId, feedback });
+      }
+    },
+    [socket]
+  );
+
   const resetSession = useCallback(() => {
     setPhase('mode-select');
     setSelectedMode(null);
@@ -177,5 +200,6 @@ export function useSession(socket: Socket | null): UseSessionReturn {
     stopSession,
     dismissWhisper,
     resetSession,
+    sendWhisperFeedback,
   };
 }

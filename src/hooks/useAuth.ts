@@ -6,6 +6,7 @@ import {
   logout as authLogout,
   getStoredToken,
 } from '../services/auth';
+import { disconnectSocket } from '../services/socket';
 import { api } from '../services/api';
 
 interface AuthState {
@@ -53,6 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    // Disconnect socket before clearing tokens to ensure clean shutdown
+    disconnectSocket();
     await authLogout();
     setUser(null);
   }, []);
