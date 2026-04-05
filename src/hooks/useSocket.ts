@@ -20,6 +20,11 @@ export function useSocket(): UseSocketReturn {
       socketRef.current = s;
       setSocket(s);
 
+      // Remove old listeners before adding new ones to prevent duplicates on reconnect
+      s.off('connect');
+      s.off('disconnect');
+      s.off('connect_error');
+
       s.on('connect', () => {
         setIsConnected(true);
       });

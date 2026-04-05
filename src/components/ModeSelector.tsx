@@ -62,7 +62,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   card: {
-    width: '47%',
+    flexBasis: '47%',
+    flexGrow: 0,
     backgroundColor: colors.surface,
     borderRadius: 12,
     padding: spacing.md,

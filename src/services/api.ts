@@ -50,7 +50,17 @@ async function request<T>(
     return undefined as T;
   }
 
-  return response.json();
+  const json = await response.json();
+
+  // Unwrap backend response envelope: { success, data } or { success, error }
+  if (json && typeof json === 'object' && 'success' in json) {
+    if (json.success === false) {
+      throw new Error(json.error || 'Request failed');
+    }
+    return json.data as T;
+  }
+
+  return json as T;
 }
 
 export const api = {

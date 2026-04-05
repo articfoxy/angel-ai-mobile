@@ -66,15 +66,22 @@ export function useSession(socket: Socket | null): UseSessionReturn {
     };
 
     const onWhisperCard = (data: WhisperCardData) => {
-      setWhisperCards((prev) => [...prev, { ...data, id: data.id || `whisper-${Date.now()}` }]);
+      setWhisperCards((prev) => {
+        const next = [...prev, { ...data, id: data.id || `whisper-${Date.now()}` }];
+        return next.length > 100 ? next.slice(-100) : next;
+      });
     };
 
-    const onThinking = (data: { active: boolean }) => {
-      setIsThinking(data.active);
+    const onThinking = () => {
+      setIsThinking(true);
     };
 
-    const onLiveStatus = (data: { status: string }) => {
-      setLiveStatus(data.status);
+    const onInferenceResult = () => {
+      setIsThinking(false);
+    };
+
+    const onLiveStatus = (data: { isLive: boolean; modeId: string; sessionId: string }) => {
+      setLiveStatus(data.isLive ? 'active' : 'inactive');
     };
 
     const onSessionStatus = (data: { status: string }) => {
@@ -92,6 +99,7 @@ export function useSession(socket: Socket | null): UseSessionReturn {
     socket.on('transcript:final', onTranscriptFinal);
     socket.on('whisper:card', onWhisperCard);
     socket.on('inference:thinking', onThinking);
+    socket.on('inference:result', onInferenceResult);
     socket.on('session:live-status', onLiveStatus);
     socket.on('session:status', onSessionStatus);
     socket.on('debrief:ready', onDebriefReady);
@@ -101,6 +109,7 @@ export function useSession(socket: Socket | null): UseSessionReturn {
       socket.off('transcript:final', onTranscriptFinal);
       socket.off('whisper:card', onWhisperCard);
       socket.off('inference:thinking', onThinking);
+      socket.off('inference:result', onInferenceResult);
       socket.off('session:live-status', onLiveStatus);
       socket.off('session:status', onSessionStatus);
       socket.off('debrief:ready', onDebriefReady);

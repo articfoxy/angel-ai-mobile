@@ -59,7 +59,10 @@ export interface Memory {
 
 export interface MemoryStats {
   total: number;
-  byType: Record<string, number>;
+  totalPeople: number;
+  totalProjects: number;
+  totalTopics: number;
+  totalInsights: number;
 }
 
 export interface DashboardStats {

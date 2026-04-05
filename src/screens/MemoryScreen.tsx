@@ -67,15 +67,16 @@ export function MemoryScreen() {
     }
   }, []);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    await Promise.all([fetchMemories(), fetchStats()]);
-    setIsLoading(false);
-  }, [fetchMemories, fetchStats]);
-
   useEffect(() => {
+    let cancelled = false;
+    async function loadData() {
+      setIsLoading(true);
+      await Promise.all([fetchMemories(), fetchStats()]);
+      if (!cancelled) setIsLoading(false);
+    }
     loadData();
-  }, [loadData]);
+    return () => { cancelled = true; };
+  }, [filter, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -208,7 +209,12 @@ export function MemoryScreen() {
       {/* Memory Stats */}
       {stats && !searchQuery && (
         <View style={styles.statsRow}>
-          {Object.entries(stats.byType || {}).map(([type, count]) => (
+          {([
+            { type: 'person', count: stats.totalPeople },
+            { type: 'project', count: stats.totalProjects },
+            { type: 'concept', count: stats.totalTopics },
+            { type: 'company', count: stats.totalInsights },
+          ] as const).map(({ type, count }) => (
             <View key={type} style={styles.statBadge}>
               <Ionicons
                 name={TYPE_ICONS[type] || 'document'}
@@ -216,7 +222,7 @@ export function MemoryScreen() {
                 color={colors.textSecondary}
               />
               <Text style={styles.statBadgeText}>
-                {count as number}
+                {count}
               </Text>
             </View>
           ))}

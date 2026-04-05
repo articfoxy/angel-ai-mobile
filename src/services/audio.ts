@@ -89,7 +89,12 @@ export class AudioStreamer {
           const reader = new FileReader();
           reader.onloadend = () => {
             if (reader.result && this.isStreaming) {
-              this.socket.emit('audio:chunk', reader.result);
+              const arrayBuffer = reader.result as ArrayBuffer;
+              // Strip 44-byte WAV header — backend expects raw PCM (16kHz, mono, 16-bit)
+              const pcmData = arrayBuffer.byteLength > 44
+                ? arrayBuffer.slice(44)
+                : arrayBuffer;
+              this.socket.emit('audio:chunk', pcmData);
             }
           };
           reader.readAsArrayBuffer(blob);
@@ -102,8 +107,7 @@ export class AudioStreamer {
 
       // Schedule next chunk
       if (this.isStreaming) {
-        // Use setTimeout to avoid stack overflow from recursive calls
-        setTimeout(() => this.recordChunk(), 0);
+        setTimeout(() => this.recordChunk(), CHUNK_DURATION_MS);
       }
     } catch {
       // If recording fails, try again after a brief delay

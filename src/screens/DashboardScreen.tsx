@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { colors, spacing, fontSize } from '../theme';
 import { StatCard } from '../components/StatCard';
@@ -73,6 +73,16 @@ export function DashboardScreen() {
     await Promise.all([refetchStats(), refetchStreak(), refetchSessions(), refetchModes()]);
     setRefreshing(false);
   }, [refetchStats, refetchStreak, refetchSessions, refetchModes]);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refetchStats();
+      refetchStreak();
+      refetchSessions();
+      refetchModes();
+    }, [refetchStats, refetchStreak, refetchSessions, refetchModes])
+  );
 
   const displayModes = modes || DEFAULT_MODES;
 

@@ -28,6 +28,10 @@ export function LoginScreen() {
       setError('Please enter email and password');
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Please enter a valid email address');
+      return;
+    }
     if (isRegister && !name.trim()) {
       setError('Please enter your name');
       return;

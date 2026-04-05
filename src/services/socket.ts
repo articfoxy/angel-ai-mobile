@@ -16,8 +16,10 @@ export async function connectSocket(): Promise<Socket> {
     auth: { token },
     transports: ['websocket'],
     reconnection: true,
-    reconnectionDelay: 1000,
     reconnectionAttempts: 10,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 30000,
+    timeout: 20000,
   });
 
   return socket;

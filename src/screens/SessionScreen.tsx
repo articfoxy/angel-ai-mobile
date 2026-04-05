@@ -70,12 +70,14 @@ export function SessionScreen({ route }: SessionScreenProps) {
   const modes = apiModes || DEFAULT_MODES;
   const [isStarting, setIsStarting] = useState(false);
 
-  // Connect socket when screen mounts
+  // Connect socket once on mount
+  const connectAttemptedRef = React.useRef(false);
   useEffect(() => {
-    if (!isConnected) {
+    if (!connectAttemptedRef.current && !isConnected) {
+      connectAttemptedRef.current = true;
       connect();
     }
-  }, [connect, isConnected]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle incoming modeId from navigation
   useEffect(() => {
@@ -125,6 +127,12 @@ export function SessionScreen({ route }: SessionScreenProps) {
   const handleNewSession = useCallback(() => {
     resetSession();
   }, [resetSession]);
+
+  const handleWhisperFeedback = useCallback((whisperId: string, feedback: 'positive' | 'negative') => {
+    if (socket) {
+      socket.emit('whisper:feedback', { whisperId, feedback });
+    }
+  }, [socket]);
 
   // --- RENDER: Mode Selection ---
   if (phase === 'mode-select') {
@@ -212,6 +220,7 @@ export function SessionScreen({ route }: SessionScreenProps) {
                 key={card.id}
                 card={card}
                 onDismiss={dismissWhisper}
+                onFeedback={handleWhisperFeedback}
                 index={index}
               />
             ))}

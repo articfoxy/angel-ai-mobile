@@ -7,6 +7,7 @@ import type { WhisperCardData } from '../types';
 interface WhisperCardProps {
   card: WhisperCardData;
   onDismiss: (id: string) => void;
+  onFeedback?: (whisperId: string, feedback: 'positive' | 'negative') => void;
   index: number;
 }
 
@@ -21,7 +22,7 @@ const TYPE_CONFIG: Record<
   info: { icon: 'information-circle', color: colors.textSecondary },
 };
 
-export function WhisperCard({ card, onDismiss, index }: WhisperCardProps) {
+export function WhisperCard({ card, onDismiss, onFeedback, index }: WhisperCardProps) {
   const [expanded, setExpanded] = useState(false);
   const config = TYPE_CONFIG[card.type] || TYPE_CONFIG.info;
 
@@ -65,10 +66,16 @@ export function WhisperCard({ card, onDismiss, index }: WhisperCardProps) {
       )}
 
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => onFeedback?.(card.id, 'positive')}
+        >
           <Ionicons name="thumbs-up-outline" size={16} color={colors.textSecondary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => onFeedback?.(card.id, 'negative')}
+        >
           <Ionicons name="thumbs-down-outline" size={16} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>

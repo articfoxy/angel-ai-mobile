@@ -14,11 +14,19 @@ export async function getStoredToken(): Promise<string | null> {
 }
 
 async function storeToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
+  try {
+    await SecureStore.setItemAsync(TOKEN_KEY, token);
+  } catch {
+    // SecureStore unavailable — token will not persist
+  }
 }
 
 async function storeRefreshToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, token);
+  try {
+    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, token);
+  } catch {
+    // SecureStore unavailable
+  }
 }
 
 async function getStoredRefreshToken(): Promise<string | null> {
@@ -30,8 +38,12 @@ async function getStoredRefreshToken(): Promise<string | null> {
 }
 
 async function clearTokens(): Promise<void> {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
-  await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+  try {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+  } catch {
+    // SecureStore unavailable
+  }
 }
 
 export async function login(email: string, password: string): Promise<User> {
@@ -82,27 +94,42 @@ export async function logout(): Promise<void> {
   await clearTokens();
 }
 
+let refreshPromise: Promise<string> | null = null;
+
 export async function refreshToken(): Promise<string> {
-  const storedRefresh = await getStoredRefreshToken();
-  if (!storedRefresh) {
-    throw new Error('No refresh token available');
+  // Mutex: if a refresh is already in progress, reuse that promise
+  if (refreshPromise) {
+    return refreshPromise;
   }
 
-  const response = await fetch(`${API_URL}/api/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken: storedRefresh }),
-  });
+  refreshPromise = (async () => {
+    try {
+      const storedRefresh = await getStoredRefreshToken();
+      if (!storedRefresh) {
+        throw new Error('No refresh token available');
+      }
 
-  if (!response.ok) {
-    await clearTokens();
-    throw new Error('Token refresh failed');
-  }
+      const response = await fetch(`${API_URL}/api/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: storedRefresh }),
+      });
 
-  const data: AuthResponse = await response.json();
-  await storeToken(data.token);
-  if (data.refreshToken) {
-    await storeRefreshToken(data.refreshToken);
-  }
-  return data.token;
+      if (!response.ok) {
+        await clearTokens();
+        throw new Error('Token refresh failed');
+      }
+
+      const data: AuthResponse = await response.json();
+      await storeToken(data.token);
+      if (data.refreshToken) {
+        await storeRefreshToken(data.refreshToken);
+      }
+      return data.token;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
